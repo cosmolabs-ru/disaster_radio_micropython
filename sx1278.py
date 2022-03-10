@@ -12,6 +12,7 @@ class SX1278:
     regFifoTxBaseAddr = 0x0E
     regFifoRxBaseAddr = 0x0F
     regFifoRxCurrentAddr = 0x10
+    regIrqFlags = 0x12
     regRxNbBytes = 0x13
     regPktSNRValue = 0x19
     regPktRSSIValue = 0x1A
@@ -74,7 +75,7 @@ class SX1278:
     def setup(self):
         self.set_mode(self.MODE_SLEEP)
         self.write_reg(self.regLNA, 0x23)  # Max LNA gain + boost
-        self.write_reg(0x11, 0x48)  # RxDone, TxDone IRQ EN
+        # self.write_reg(0x11, 0x48)  # RxDone, TxDone IRQ EN
         self.write_reg(self.regModemConfig1, 0b01101000)  # 62.5 kHz, 4/8 CR, Explicit header
         self.write_reg(self.regModemConfig2, 0xC0)  # SF 12
         self.write_reg(self.regModemConfig3, 0x08)  # Low datarate optimize On
@@ -84,9 +85,10 @@ class SX1278:
         self.write_fifo(buffer)
         print("sending ", buffer)
         self.set_mode(self.MODE_TX)
-        while self.read_reg(self.regOpMode)[1] == self.MODE_TX:
+        while self.read_reg(self.regIrqFlags)[1] == 0:  # self.read_reg(self.regOpMode)[1] == self.MODE_TX:
             sleep(0.5)
             pass
+        self.write_reg(self.regIrqFlags, 0x08)
         print("sent!")
 
         
