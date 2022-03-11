@@ -51,13 +51,23 @@ class SX1278:
 
     def write_fifo(self, buffer: bytes):
         if self.spi is not None:
-            buf_ba = bytearray([0x10, ])
+            buf_ba = bytearray([0x80, ])
             buf_ba.extend(buffer)
             self.nss(0)
             self.spi.write(buf_ba)
             self.nss(1)
             sleep(0.001)
 
+    def read_fifo(self, rx_len: int):
+        if self.spi is not None:
+            buf_ba = bytearray([0x00, ])
+            buf_ba.extend(bytearray(rx_len))
+            rb = bytearray(rx_len+1)
+            self.nss(0)
+            self.spi.write_readinto(buf_ba, rb)
+            self.nss(1)
+            sleep(0.001)
+            return rb[1:]
 
     def read_reg(self, reg):
         wb = bytearray([reg, 0xBB])
@@ -67,7 +77,7 @@ class SX1278:
             self.spi.write_readinto(wb, rb)
             self.nss(1)
             sleep(0.001)
-            return rb
+            return rb[1]
 
     def set_mode(self, mode):
         self.write_reg(self.regOpMode, mode)
@@ -75,17 +85,20 @@ class SX1278:
     def setup(self):
         self.set_mode(self.MODE_SLEEP)
         self.write_reg(self.regLNA, 0x23)  # Max LNA gain + boost
-        # self.write_reg(0x11, 0x48)  # RxDone, TxDone IRQ EN
+        self.write_reg(self.regDioMapping1, 0x00)
         self.write_reg(self.regModemConfig1, 0b01101000)  # 62.5 kHz, 4/8 CR, Explicit header
         self.write_reg(self.regModemConfig2, 0xC0)  # SF 12
         self.write_reg(self.regModemConfig3, 0x08)  # Low datarate optimize On
 
     def transmit(self, buffer: bytes):
         self.set_mode(self.MODE_STBY)
+        self.write_reg(self.regFifoTxBaseAddr, 0)
+        self.write_reg(self.regFifoAddrPtr, 0)
+        self.write_reg(self.regPayloadLength, len(buffer))
         self.write_fifo(buffer)
         print("sending ", buffer)
         self.set_mode(self.MODE_TX)
-        while self.read_reg(self.regIrqFlags)[1] == 0:  # self.read_reg(self.regOpMode)[1] == self.MODE_TX:
+        while self.read_reg(self.regIrqFlags) == 0:  # self.read_reg(self.regOpMode)[1] == self.MODE_TX:
             sleep(0.5)
             pass
         self.write_reg(self.regIrqFlags, 0x08)
