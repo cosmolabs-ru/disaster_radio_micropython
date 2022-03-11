@@ -18,6 +18,7 @@ class SX1278:
     regPktRSSIValue = 0x1A
     regModemConfig1 = 0x1D
     regModemConfig2 = 0x1E
+    regSymbTimeoutLSB = 0x1F
     regModemConfig3 = 0x26
     regPayloadLength = 0x22
     regMaxPayloadLength = 0x23
@@ -84,10 +85,12 @@ class SX1278:
 
     def setup(self):
         self.set_mode(self.MODE_SLEEP)
+        self.write_reg(self.regPAConfig, 0xFF)  # PA_BOOST pin, max output power
         self.write_reg(self.regLNA, 0x23)  # Max LNA gain + boost
-        self.write_reg(self.regDioMapping1, 0x00)
+        self.write_reg(self.regDioMapping1, 0x00)  # default IRQ mapping: RxDone, TxDone on DIO0
+        self.write_reg(self.regSymbTimeoutLSB, 0xFF)  # RXSINGLE RxTimeout: 1024 symbols
         self.write_reg(self.regModemConfig1, 0b01101000)  # 62.5 kHz, 4/8 CR, Explicit header
-        self.write_reg(self.regModemConfig2, 0xC0)  # SF 12
+        self.write_reg(self.regModemConfig2, 0xC3)  # SF 12 + SymbTimeout |= 0xC0
         self.write_reg(self.regModemConfig3, 0x08)  # Low datarate optimize On
 
     def transmit(self, buffer: bytes):
