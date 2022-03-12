@@ -1,18 +1,20 @@
 from sx1278 import SX1278
 from utime import sleep
+import utime as time
 from ubinascii import hexlify
+from machine import Pin
+import machine
+import DisasterRadio
 
 print("I'm alive!")
 sleep(0.5)
-lora = SX1278(5, 2, 14)
 
-lora.setup()
-lora_id = hex(lora.read_reg(lora.regVersion))
+dr = DisasterRadio.DR()
+lora_id = hex(dr.lora.read_reg(dr.lora.regVersion))
+print("my ID: ", hexlify(machine.unique_id()[2:]))
 print("LoRa chip ID: ", lora_id)
+led = Pin(12, Pin.OUT)
 
-# lora.rx_cont_init()
 while 1:
-    # lora.transmit(b'Hello world!')
-    # sleep(1)
-    print(lora.rx_single())
+    dr.heartbeat_cycle()
 

@@ -1,9 +1,9 @@
 from machine import Pin, SPI
 from utime import sleep
+from ubinascii import hexlify
 
 
 class SX1278:
-
     regFifo = 0x00
     regOpMode = 0x01
     regPAConfig = 0x09
@@ -102,7 +102,6 @@ class SX1278:
         self.write_reg(self.regFifoAddrPtr, 0)
         self.write_reg(self.regPayloadLength, len(buffer))
         self.write_fifo(buffer)
-        print("sending ", buffer)
         self.set_mode(self.MODE_TX)
         while self.read_reg(self.regIrqFlags) == 0:  # self.read_reg(self.regOpMode)[1] == self.MODE_TX:
             sleep(0.5)
