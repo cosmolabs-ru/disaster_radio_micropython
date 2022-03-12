@@ -41,7 +41,10 @@ class SX1278:
         self.dio0 = Pin(dio0, Pin.IN)
         self.reset = Pin(reset, Pin.OUT)
         self.nss(1)
+        self.reset(0)
+        sleep(0.1)
         self.reset(1)
+        sleep(0.1)
 
     def write_reg(self, reg, data):
         if self.spi is not None:
@@ -105,6 +108,41 @@ class SX1278:
             sleep(0.5)
             pass
         self.write_reg(self.regIrqFlags, 0x08)
-        print("sent!")
-
         
+    def rx_cont(self):
+        self.write_reg(self.regFifoAddrPtr, 0)
+        self.write_reg(self.regFifoRxBaseAddr, 0)
+        self.set_mode(self.MODE_RXCONT)  # go to RX_CONTINUOUS mode
+        while not self.dio0.value():  # wait 4 IRQ
+            pass
+        self.write_reg(self.regIrqFlags, 0x40)  # reset irq flag
+        rx_len = self.read_reg(self.regRxNbBytes)
+        self.write_reg(self.regFifoAddrPtr, self.read_reg(self.regFifoRxCurrentAddr))
+        return self.read_fifo(rx_len)
+
+    def rx_single(self):
+        self.set_mode(self.MODE_SLEEP)
+        self.write_reg(self.regFifoAddrPtr, 0)
+        self.write_reg(self.regFifoRxBaseAddr, 0)
+        self.set_mode(self.MODE_RXSINGLE)
+        irqs = 0
+        while 1:
+            irqs = self.read_reg(self.regIrqFlags)
+            if irqs & 0x40 or irqs & 0x80: break
+        irqs &= 0xC0
+        if irqs & 0x80:
+            self.write_reg(self.regIrqFlags, 0xC0)
+            print("rx timeout irq")
+            return None
+        elif irqs & 0x40:
+            self.write_reg(self.regIrqFlags, 0xC0)  # reset irq flag
+            rx_len = self.read_reg(self.regRxNbBytes)
+            self.write_reg(self.regFifoAddrPtr, self.read_reg(self.regFifoRxCurrentAddr))
+            return self.read_fifo(rx_len)
+        print("no irqs fired")
+        return None
+
+
+
+
+
