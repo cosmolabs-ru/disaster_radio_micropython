@@ -16,5 +16,7 @@ print("LoRa chip ID: ", lora_id)
 led = Pin(12, Pin.OUT)
 
 while 1:
-    dr.heartbeat_cycle()
+    led(dr.lora.cad())
+    # dr.send_heartbeat()
+    # dr.heartbeat_cycle()
 
