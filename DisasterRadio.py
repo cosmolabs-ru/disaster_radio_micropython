@@ -25,19 +25,22 @@ class DR:
         self.rt = []
         try:
             self.file_rt = open('rt.json', 'r')
-            try:
-                self.rt = json.loads(self.file_rt.readlines())
-            except:
-                self.rt = []
-                self.file_rt = open('rt.json', 'w+')
-                self.file_rt.close()
         except:
+            print("RT file opening failed")
             self.file_rt = open('rt.json', 'w+')
             self.file_rt.close()
             self.rt = []
         else:
-            self.file_rt.close()
             pass
+        try:
+            self.rt = json.loads(self.file_rt.read())
+        except:
+            print("JSON parsing exceprion on loading RT!")
+            self.rt = []
+            self.file_rt = open('rt.json', 'w+')
+            self.file_rt.close()
+        self.file_rt.close()
+        print("Routed loaded from RT: ", len(self.rt))
         i = bytearray(17)
         self.p_tx = uctypes.struct(uctypes.addressof(i), self.PACKET_HEADER, uctypes.BIG_ENDIAN)
         self.p_rx = uctypes.struct(uctypes.addressof(i), self.PACKET_HEADER, uctypes.BIG_ENDIAN)
@@ -48,25 +51,32 @@ class DR:
         self.p_tx.ttl = 1
         self.p_tx.total_length = 17
         self.p_tx.sender = int.from_bytes(self.id, 'big')
+        self.p_tx.hop_count = 1
         self.p_tx.receiver = int.from_bytes(b'\xAF\xFF\xFF\xFF', 'big')
         self.p_tx.sequence = 0
-        self.p_tx.source = int.from_bytes(self.id, 'big')
-        self.p_tx.hop_count = 0
+        self.p_tx.source = int.from_bytes(bytes([0xDE, 0xAD, 0xBE, 0xEF]), 'big')
         self.p_tx.metric = 235
         self.lora.transmit(bytearray(self.p_tx))
 
     def parse_packet(self, packet: bytes):
         self.p_rx = uctypes.struct(uctypes.addressof(packet), self.PACKET_HEADER, uctypes.BIG_ENDIAN)
         payload_len = self.p_rx.total_length - 17
-        print("rx source: ", hex(self.p_rx.source))
-        print(self.rt)
         if self.p_rx.source not in (o["dest"] for o in self.rt):
             new_route = {"dest": self.p_rx.source, "via": self.p_rx.sender, "hops": self.p_rx.hop_count}
             self.rt.append(new_route)
             print("New route: ", new_route)
             print("Routes: ", len(self.rt))
+            serialized_rt = json.dumps(self.rt)
+            print(serialized_rt)
+            try:
+                self.file_rt = open('rt.json', 'w+')
+                self.file_rt.write(serialized_rt)
+                self.file_rt.close()
+            except:
+                print("Failed to save RT to file")
+                pass
         else:
-            print("RT packet received, route exists")
+            print("RT packet received, route exists")  # TODO check for a shorter route
 
     def heartbeat_cycle(self):
         print("Listening...")
