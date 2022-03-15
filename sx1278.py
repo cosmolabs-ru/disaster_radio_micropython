@@ -94,8 +94,8 @@ class SX1278:
         self.write_reg(self.regLNA, 0x23)  # Max LNA gain + boost
         self.write_reg(self.regDioMapping1, 0x00)  # default IRQ mapping: RxDone, TxDone on DIO0
         self.write_reg(self.regSymbTimeoutLSB, 0xFF)  # RXSINGLE RxTimeout: 1024 symbols
-        self.write_reg(self.regPreambleLengthLSB, 0xFF)  # maximum preable length
-        self.write_reg(self.regPreambleLengthMSB, 0xFF)
+        self.write_reg(self.regPreambleLengthLSB, 0x0F)  # maximum preable length
+        self.write_reg(self.regPreambleLengthMSB, 0x00)
         self.write_reg(self.regModemConfig1, 0b01111000)  # 125 kHz, 4/8 CR, Explicit header
         self.write_reg(self.regModemConfig2, 0xC3)  # SF 12 + SymbTimeout |= 0xC0
         self.write_reg(self.regModemConfig3, 0x08)  # Low datarate optimize On
@@ -107,7 +107,7 @@ class SX1278:
         self.write_reg(self.regPayloadLength, len(buffer))
         self.write_fifo(buffer)
         self.set_mode(self.MODE_TX)
-        while self.read_reg(self.regIrqFlags) == 0:  # self.read_reg(self.regOpMode)[1] == self.MODE_TX:
+        while not self.read_reg(self.regIrqFlags) & 0x08:  # Wait TxDone IRQ
             sleep(0.1)
             pass
         self.write_reg(self.regIrqFlags, 0x08)
@@ -124,7 +124,8 @@ class SX1278:
         return self.read_fifo(rx_len)
 
     def rx_single(self):
-        self.set_mode(self.MODE_SLEEP)
+        self.set_mode(self.MODE_STBY)
+        sleep(0.01)
         self.write_reg(self.regFifoAddrPtr, 0)
         self.write_reg(self.regFifoRxBaseAddr, 0)
         self.set_mode(self.MODE_RXSINGLE)
