@@ -66,17 +66,23 @@ class DR:
             self.rt.append(new_route)
             print("New route: ", new_route)
             print("Routes: ", len(self.rt))
-            serialized_rt = json.dumps(self.rt)
-            print(serialized_rt)
-            try:
-                self.file_rt = open('rt.json', 'w+')
-                self.file_rt.write(serialized_rt)
-                self.file_rt.close()
-            except:
-                print("Failed to save RT to file")
-                pass
         else:
-            print("RT packet received, route exists")  # TODO check for a shorter route
+            for route in self.rt:
+                if route["dest"] == self.p_rx.source:
+                    if route["hops"] > self.p_rx.hop_count:
+                        route["hops"] = self.p_rx.hop_count
+                        route["via"] = self.p_rx.sender
+                        print("Found shorter or newer RTE to ", hex(self.p_rx.source))
+                        break
+        serialized_rt = json.dumps(self.rt)
+        print(serialized_rt)
+        try:
+            self.file_rt = open('rt.json', 'w+')
+            self.file_rt.write(serialized_rt)
+            self.file_rt.close()
+        except:
+            print("Failed to save RT to file")
+            pass
 
     def heartbeat_cycle(self):
         print("Listening...")
