@@ -6,10 +6,14 @@ The goal is to implement an off-grid text messgaing with encryption, optional ge
 It can finction as a mesh of "blind" Lora nodes, intercating with via web interface. Also planning to build a standalone qwerty pager like Armachat. Hardware will be open source as well. 
 Planning to support "One node - one user" paradigm, as well as "mesh of (fixed & mobile) nodes <-> multiple clients via WiFi", kind of alternative cell network.
 
-
 All you need to build a node is: 
+* Heltec Lora32 (433 Mhz preferred, available on AliExpress)
+
+or
 * an ESP32
 * an sx1276/78 module
 * a handful of wires
+
+Support for Heltec Lora32 is planned! For now, this is the primary HW platform candidate.
 Building guide will be available later, but experienced DIYers can easily figure out from the code how to connect sx1278 to esp32.
-It can finction as a mesh of "blind" Lora nodes, intercating with via web interface. 
+It can finction as a mesh of "blind" Lora nodes, interacting with via web interface. 
