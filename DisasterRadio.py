@@ -4,16 +4,19 @@ from ubinascii import hexlify
 import uctypes
 import machine
 import ujson as json
+import uasyncio as asyncio
 
 DUTY_DELAY = 1
 DROP_RT = 1
 
+
 class DR:
     def __init__(self):
         self.id = machine.unique_id()[2:]
-        self.lora = lora = SX1278(5, 2, 14)
+        self.lora = lora = SX1278(5, 2, 21, 14)
         self.lora.setup()
         self.lora.write_reg(self.lora.regSymbTimeoutLSB, self.id[3])
+        self.fl_heartbeat_complete = asyncio.ThreadSafeFlag()
         self.PACKET_HEADER = {
             "ttl": 0 | uctypes.UINT8,
             "total_length": 1 | uctypes.UINT8,
@@ -44,15 +47,16 @@ class DR:
             self.file_rt.close()
         self.file_rt.close()
         if DROP_RT:
+            print("WARNING: DROP_RT flag is set. Routing table is now cleared!")
             self.rt = []
             self.file_rt = open('rt.json', 'w+')
             self.file_rt.close()
-        print("Routed loaded from RT: ", len(self.rt))
+        print("Routes loaded from RT: ", len(self.rt))
         i = bytearray(17)
         self.p_tx = uctypes.struct(uctypes.addressof(i), self.PACKET_HEADER, uctypes.BIG_ENDIAN)
         self.p_rx = uctypes.struct(uctypes.addressof(i), self.PACKET_HEADER, uctypes.BIG_ENDIAN)
 
-    def send_heartbeat(self):
+    async def send_heartbeat(self):
         print("sending heartbeat ", hexlify(self.id).decode('ascii'))
         self.p_tx.ttl = 1
         self.p_tx.total_length = 17
@@ -62,7 +66,7 @@ class DR:
         self.p_tx.sequence = 0
         self.p_tx.source = int.from_bytes(self.id, 'big')
         self.p_tx.metric = 235
-        self.lora.transmit(bytearray(self.p_tx))
+        await self.lora.async_transmit(bytearray(self.p_tx))
 
     def parse_packet(self, packet: bytes):
         self.p_rx = uctypes.struct(uctypes.addressof(packet), self.PACKET_HEADER, uctypes.BIG_ENDIAN)
@@ -91,12 +95,12 @@ class DR:
             print("Failed to save RT to file")
             pass
 
-    def heartbeat_cycle(self):
+    async def heartbeat_cycle(self):
         print("Rx Timeout(sym):", self.id[3] | 0x300)
         print("Listening...")
-        rx_result = self.lora.rx_single()
+        rx_result = await self.lora.async_rx_single()
         if rx_result is not None:
             self.parse_packet(rx_result)
         else:
-            self.send_heartbeat()
+            await self.send_heartbeat()
         pass
